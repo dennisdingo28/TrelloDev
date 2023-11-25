@@ -30,7 +30,7 @@ const BoardIdPage = async ({params}: BoardIdPageProps) =>{
             order:"asc",
         },
     });
-
+    
 
     return (
         <div className="p-4 h-full overflow-x-auto">
