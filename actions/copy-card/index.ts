@@ -5,39 +5,40 @@ import { InputType, ReturnType } from "./types"
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { createSafeAction } from "@/lib/create-safe-action";
-import { CreateCard } from "./schema";
+import { CopyCard } from "./schema";
 
 const handler = async (data: InputType): Promise<ReturnType> => {
-    
     const {userId, orgId} = auth();
-    
 
     if(!userId || !orgId)
         return {
             error:"Unauthorized",
         };
 
-    const {title, boardId, listId} = data;
-
+    const {id,boardId} = data;
     let card;
 
+
     try {
-        const list = await db.list.findUnique({
+        const cardToCopy = await db.card.findUnique({
             where:{
-                id: listId,
-                board:{
-                    orgId,
+                id,
+                list:{
+                    board:{
+                        orgId,
+                    },
                 },
             },
-        })
+           
+        });
 
-        if(!list)
+        if(!cardToCopy)
             return {
-                error:"List not found"
-            }
+                error:"Card not found"
+            };
         const lastCard = await db.card.findFirst({
             where:{
-                listId,
+                listId:cardToCopy.listId,
             },
             orderBy:{order:"desc"},
             select:{order:true},
@@ -45,26 +46,24 @@ const handler = async (data: InputType): Promise<ReturnType> => {
 
         const newOrder = lastCard ? lastCard.order+1:1;
 
-        
         card = await db.card.create({
             data:{
-                title,
-                listId,
-                order:newOrder,
+                title:`${cardToCopy.title} - Copy`,
+                description:cardToCopy.description,
+                order: newOrder,
+                listId:cardToCopy.listId,
             },
         });
 
     } catch (error) {
-        console.log("cc",error);
-        
         return {
-            error:"Failed to create",
+            error:"Failed to copy",
         };
     }
-    console.log(card);
-    
+
     revalidatePath(`/board/${boardId}`);
-    return {data: card};
+
+    return {data: card}
 }
 
-export const createCard = createSafeAction(CreateCard, handler);
+export const copyCard = createSafeAction(CopyCard, handler);
